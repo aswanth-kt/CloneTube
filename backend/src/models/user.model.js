@@ -63,6 +63,7 @@ userSchema.methods.isPasswordCorrect = async function(password) {
   return await bcrypt.compare(password, this.password)
 };
 
+//  Generate tokens
 userSchema.methods.generateAccessToken = function() {
   const payload = {
     _id: this._id,
