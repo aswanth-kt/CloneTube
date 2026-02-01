@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponce } from "../utils/ApiResponce.js";
 
+
 export const userRegister = asyncHandler(async (req, res) => {
   // get user details from frontend
   const { fullName, email, username, password} = req.body;
@@ -14,7 +15,7 @@ export const userRegister = asyncHandler(async (req, res) => {
   };
 
   // check if user already exists: username, email
-  const existedUser = User.findOne({
+  const existedUser = await User.findOne({
     $or: [{ email }, { username }]
   });
 
@@ -25,6 +26,7 @@ export const userRegister = asyncHandler(async (req, res) => {
   // check for images, check for avatar
   const avatarLocalPath = req.files?.avatar[0]?.path;
   const coverImageLocalPth = req.files?.coverImage[0]?.path;
+  // console.log("Local path: ", avatarLocalPath)
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar file is required");
@@ -33,9 +35,10 @@ export const userRegister = asyncHandler(async (req, res) => {
   // upload them to cloudinary, avatar
   const avatar = await uploadOnCloudinary(avatarLocalPath);
   const coverImage = await uploadOnCloudinary(coverImageLocalPth);
+  // console.log("Cloudinary res:", avatar, coverImage)
 
   if (!avatar) {
-    throw new ApiError(400, "Avatar file is required");;
+    throw new ApiError(400, "Avatar file is required");
   };
 
   // create user object - create entry in db
@@ -59,7 +62,7 @@ export const userRegister = asyncHandler(async (req, res) => {
 
   // return res
   return res.status(201).json(
-    new ApiResponce(200, user, "User register successfully")
+    new ApiResponce(201, user, "User register successfully")
   );
 
 });

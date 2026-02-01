@@ -50,12 +50,11 @@ const userSchema = new Schema(
 );
 
 // Password hasing before saving
-userSchema.pre("save", async function(next) {
+userSchema.pre("save", async function() {
   // Password is not modify don't update it
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("password")) return;
 
   this.password = await bcrypt.hash(this.password, 10);
-  next();
 });
 
 // Add a method for checking password (compare bcrypt)

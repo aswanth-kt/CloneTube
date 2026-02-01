@@ -1,20 +1,19 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
-
-cloudinary.config({ 
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
-  api_key: process.env.CLOUDINARY_API_KEY, 
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  // secure_distribution: 'mydomain.com',
-  // upload_prefix: 'https://api-eu.cloudinary.com'
-});
+import { ApiError } from "./ApiError.js";
 
 export const uploadOnCloudinary = async (localFilePath) => {
   try {
+    cloudinary.config({ 
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+      api_key: process.env.CLOUDINARY_API_KEY, 
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
     if (!localFilePath) {
       console.log("Cloudinary local file path is undefined!");
-      return null;
     }
+
     // Upload file on cloudinary
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
@@ -22,16 +21,17 @@ export const uploadOnCloudinary = async (localFilePath) => {
 
     if (!response) {
       console.log("Cloudinary upload failed!");
-      return;
+      return new ApiError(400, "Cloudinary upload failed by uploading time");
     };
 
     console.log("File uploaded on cloudinary ", response.url);
+
     return response;
 
   } catch (error) {
     // if upload operation is failed delete file from temp
-    fs.unlinkSync(localFilePath)
-    return null;
+    fs.unlinkSync(localFilePath);
+    return new ApiError(500, "Failed image upload on cloudinary")
   }
 };
  
