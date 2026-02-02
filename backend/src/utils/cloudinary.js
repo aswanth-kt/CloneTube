@@ -12,6 +12,7 @@ export const uploadOnCloudinary = async (localFilePath) => {
 
     if (!localFilePath) {
       console.log("Cloudinary local file path is undefined!");
+      return null;
     }
 
     // Upload file on cloudinary
@@ -20,18 +21,21 @@ export const uploadOnCloudinary = async (localFilePath) => {
     });
 
     if (!response) {
-      console.log("Cloudinary upload failed!");
+      fs.unlinkSync(localFilePath)
       return new ApiError(400, "Cloudinary upload failed by uploading time");
     };
 
     console.log("File uploaded on cloudinary ", response.url);
+
+    // successfully img uploade on cloudinary then remove local image
+    fs.unlinkSync(localFilePath);
 
     return response;
 
   } catch (error) {
     // if upload operation is failed delete file from temp
     fs.unlinkSync(localFilePath);
-    return new ApiError(500, "Failed image upload on cloudinary")
+    return null;
   }
 };
  
