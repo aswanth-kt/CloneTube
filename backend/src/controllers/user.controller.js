@@ -2,9 +2,9 @@ import jwt from "jsonwebtoken";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponce } from "../utils/ApiResponce.js";
-import { avatar_cloud_folder_path, coverImage_cloud_folder_path } from "../constants.js";
+import { AVATAR_CLOUD_FOLDER_PATH, COVER_IMAGE_CLOUD_FOLDER_PATH } from "../constants.js";
 
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -22,7 +22,7 @@ const generateAccessAndRefreshToken = async (userId) => {
   } catch (error) {
     throw new ApiError(500, "Error while generate access and refresh token");
   }
-}
+};
 
 
 export const userRegister = asyncHandler(async (req, res) => {
@@ -63,8 +63,12 @@ export const userRegister = asyncHandler(async (req, res) => {
   }
 
   // upload them to cloudinary
-  const avatar = await uploadOnCloudinary(avatarLocalPath, avatar_cloud_folder_path);
-  const coverImage = await uploadOnCloudinary(coverImageLocalPth, coverImage_cloud_folder_path);
+  const avatar = await uploadOnCloudinary(avatarLocalPath, AVATAR_CLOUD_FOLDER_PATH);
+  
+  let coverImage = null;
+  if (coverImageLocalPth) {
+    coverImage = await uploadOnCloudinary(coverImageLocalPth, COVER_IMAGE_CLOUD_FOLDER_PATH);
+  }
   // console.log("Cloudinary res:", avatar, coverImage)
 
   if (!avatar) {
@@ -77,8 +81,16 @@ export const userRegister = asyncHandler(async (req, res) => {
     username: username.toLowerCase(),
     email,
     password,
-    avatar: avatar.url,
-    coverImage: coverImage?.url || ""
+    avatar: { 
+      url: avatar.url, 
+      public_id: avatar.public_id 
+    },
+    coverImage: coverImage 
+    ? {
+      url: coverImage?.url,
+      public_id: coverImage?.public_id
+    } 
+    : undefined
   });
 
   // Check user is created or not, if user create successfully remove password and refresh token field from response
@@ -308,25 +320,45 @@ export const updateAccountDetails = asyncHandler(async (req, res) => {
 
 
 export const updateAvatar = asyncHandler(async (req, res) => {
+
   const avatarLocalFilePath = req?.file?.path;
 
   if (!avatarLocalFilePath) {
-    throw new ApiError(400, "Vatar file is missing");
+    throw new ApiError(400, "Avatar file is missing");
   };
 
-  const avatar = await uploadOnCloudinary(avatarLocalFilePath);
+  const avatar = await uploadOnCloudinary(avatarLocalFilePath, AVATAR_CLOUD_FOLDER_PATH);
 
   if (!avatar) {
     throw new ApiError(500, "Failed avatar file uploade on cloudinary");
   };
 
+  // get public id for delete from cloudinary
+  const avatarOldPublicId = (
+    await User.findById(req.user?._id)
+    .select("avatar.public_id")
+    .lean()
+  )?.avatar?.public_id;
+
+  // Update new cloudinary url & public id
   const user = await User.findByIdAndUpdate(
     req?.user?._id,
     {
-      $set: {avatar: avatar.url}
+      $set: {
+        avatar: {
+          url: avatar.url,
+          public_id: avatar.public_id
+        }
+      }
     },
     { new: true }
   ).select("-password");
+
+  const cloudinaryDeleteRes = await deleteFromCloudinary(avatarOldPublicId);
+
+  if (cloudinaryDeleteRes.result !== "ok") {
+    console.warn("Cloudinary avatar delete warning:", cloudinaryDeleteRes)
+  }
 
   return res
   .status(200)
@@ -339,30 +371,54 @@ export const updateAvatar = asyncHandler(async (req, res) => {
 
 
 export const updateCoverImage = asyncHandler(async (req, res) => {
+
   const coverImageLocalFilePath = req?.file?.path;
 
   if (!coverImageLocalFilePath) {
-    throw new ApiError(400, "Cove image file is missing");
+    throw new ApiError(400, "Cover image file is missing");
   };
 
-  const coverImage = await uploadOnCloudinary(coverImageLocalFilePath);
+  // Upload new img on cloudinary
+  const coverImage = await uploadOnCloudinary(coverImageLocalFilePath, COVER_IMAGE_CLOUD_FOLDER_PATH);
 
   if (!coverImage) {
     throw new ApiError(500, "Failed cover image file uploade on cloudinary");
   };
 
-  const user = await User.findByIdAndUpdate(
-    req?.user?._id,
-    {
-      $set: {coverImage: coverImage.url}
-    },
-    { new: true }
-  ).select("-password");
+  const user = await User.findById(req?.user?._id)
+  .select("-password -refreshToken");
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  };
+
+  const coverImageOldPublicId = user.coverImage?.public_id;
+  // console.log("cover image old public id:", coverImageOldPublicId)
+
+  // Update new cloudinary url and public id
+  user.coverImage.url = coverImage?.url;
+  user.coverImage.public_id = coverImage?.public_id;
+  await user.save();
+
+  // Delete img from cloudinary
+  const cloudinaryDeleteRes = await deleteFromCloudinary(coverImageOldPublicId);
+
+  if (cloudinaryDeleteRes.result !== "ok") {
+    console.warn("Cloudinary cover image delete warning:", cloudinaryDeleteRes)
+  }
+
+  // const user = await User.findByIdAndUpdate(
+  //   req?.user?._id,
+  //   {
+  //     $set: {coverImage: coverImage.url}
+  //   },
+  //   { new: true }
+  // ).select("-password");
 
   return res
   .status(200)
   .json(
-    new ApiResponce(200, user, "Cove image updataed successfully")
+    new ApiResponce(200, user, "Cover image updataed successfully")
   );
 
 });

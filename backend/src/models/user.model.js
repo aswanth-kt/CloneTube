@@ -26,11 +26,18 @@ const userSchema = new Schema(
       index: true
     },
     avatar: {
-      type: String,
-      required: true
+      url:{
+        type: String,
+        required: true
+      },
+      public_id:{
+        type: String,
+        required: true
+      },
     },
     coverImage: {
-      type: String,
+      url: String,
+      public_id: String
     },
     watchHistory: [
       {

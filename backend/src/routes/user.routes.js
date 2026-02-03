@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { refreshAccessToken, userLogin, userLogout, userRegister } from "../controllers/user.controller.js";
+import { refreshAccessToken, updateAvatar, updateCoverImage, userLogin, userLogout, userRegister } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { veryfyJWT } from "../middlewares/auth.middleware.js";
 
@@ -18,5 +18,10 @@ router.post("/login", userLogin);
 router.post("/logout", veryfyJWT, userLogout);
 
 router.post("/refresh-token", refreshAccessToken);
+
+router.patch("/update-avatar", upload.single("avatar"), veryfyJWT, updateAvatar);
+
+router.patch("/update-cover-image", upload.single("coverImage"), veryfyJWT, updateCoverImage);
+
 
 export default router;

@@ -1,4 +1,5 @@
 export const DB_NAME = "clonetube";
 
-export const avatar_cloud_folder_path = "cloneTube/avatar";
-export const coverImage_cloud_folder_path = "cloneTube/coverImage";
+// Cloudinary folder path
+export const AVATAR_CLOUD_FOLDER_PATH = "cloneTube/avatar";
+export const COVER_IMAGE_CLOUD_FOLDER_PATH = "cloneTube/coverImage";
