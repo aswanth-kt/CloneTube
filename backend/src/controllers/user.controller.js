@@ -226,3 +226,142 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
   )
 
 });
+
+
+export const changeCurrentPassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+
+  if (!(oldPassword && newPassword)) {
+    throw new ApiError(400, "Password filed requierd");
+  };
+  
+  const user = await User.findById(req?.user?._id);
+
+  if (!user) {
+    throw new ApiError(401, "Unauthorized request");
+  };
+
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+  if (!isPasswordCorrect) {
+    throw new ApiError(400, "Invalid credentials");
+  };
+
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponce(200, {}, "Password change successfully")
+  );
+
+});
+
+
+export const getCurrentUser = asyncHandler(async (req, res) => {
+  // const user = await User.findById(req?.user?._id).select(
+  //   "-password"
+  // );
+
+  // if (!user) {
+  //   throw new ApiError(401, "Unauthorized request")
+  // };
+
+  return res
+  .status(200)
+  .json(
+    200, req?.user,
+    "current user fetched"
+  )
+
+});
+
+
+export const updateAccountDetails = asyncHandler(async (req, res) => {
+  const { fullName, username, email} = req.body;
+
+  if (!fullName.trim() && !username.trim() && !email.trim()) {
+    throw new ApiError(400, " Provide at least one field");
+  };
+
+  const user = await User.findByIdAndUpdate(
+    req?.user?._id,
+    {
+      $set: {
+        username,
+        email,
+        fullName
+      }
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponce(200, user, "Account details updated successfully")
+  )
+
+});
+
+
+export const updateAvatar = asyncHandler(async (req, res) => {
+  const avatarLocalFilePath = req?.file?.path;
+
+  if (!avatarLocalFilePath) {
+    throw new ApiError(400, "Vatar file is missing");
+  };
+
+  const avatar = await uploadOnCloudinary(avatarLocalFilePath);
+
+  if (!avatar) {
+    throw new ApiError(500, "Failed avatar file uploade on cloudinary");
+  };
+
+  const user = await User.findByIdAndUpdate(
+    req?.user?._id,
+    {
+      $set: {avatar: avatar.url}
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponce(200, user, "Avatar updataed successfully")
+  );
+
+});
+
+
+
+export const updateCoverImage = asyncHandler(async (req, res) => {
+  const coverImageLocalFilePath = req?.file?.path;
+
+  if (!coverImageLocalFilePath) {
+    throw new ApiError(400, "Cove image file is missing");
+  };
+
+  const coverImage = await uploadOnCloudinary(coverImageLocalFilePath);
+
+  if (!coverImage) {
+    throw new ApiError(500, "Failed cover image file uploade on cloudinary");
+  };
+
+  const user = await User.findByIdAndUpdate(
+    req?.user?._id,
+    {
+      $set: {coverImage: coverImage.url}
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponce(200, user, "Cove image updataed successfully")
+  );
+
+});
