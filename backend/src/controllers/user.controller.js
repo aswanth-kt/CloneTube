@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponce } from "../utils/ApiResponce.js";
+import { avatar_cloud_folder_path, coverImage_cloud_folder_path } from "../constants.js";
 
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -62,8 +63,8 @@ export const userRegister = asyncHandler(async (req, res) => {
   }
 
   // upload them to cloudinary
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
-  const coverImage = await uploadOnCloudinary(coverImageLocalPth);
+  const avatar = await uploadOnCloudinary(avatarLocalPath, avatar_cloud_folder_path);
+  const coverImage = await uploadOnCloudinary(coverImageLocalPth, coverImage_cloud_folder_path);
   // console.log("Cloudinary res:", avatar, coverImage)
 
   if (!avatar) {

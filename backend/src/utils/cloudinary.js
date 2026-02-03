@@ -2,7 +2,7 @@ import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 import { ApiError } from "./ApiError.js";
 
-export const uploadOnCloudinary = async (localFilePath) => {
+export const uploadOnCloudinary = async (localFilePath, cloud_folder_path) => {
   try {
     cloudinary.config({ 
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
@@ -10,14 +10,15 @@ export const uploadOnCloudinary = async (localFilePath) => {
       api_secret: process.env.CLOUDINARY_API_SECRET,
     });
 
-    if (!localFilePath) {
-      console.log("Cloudinary local file path is undefined!");
+    if (!localFilePath || !cloud_folder_path) {
+      console.log("Both localFilePath and cloud folder path are required");
       return null;
     }
 
     // Upload file on cloudinary
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
+      folder: cloud_folder_path
     });
 
     if (!response) {
