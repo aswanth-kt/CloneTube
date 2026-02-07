@@ -282,11 +282,15 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
   //   throw new ApiError(401, "Unauthorized request")
   // };
 
+// console.log("current user:", req?.user)
   return res
   .status(200)
   .json(
-    200, req?.user,
-    "current user fetched"
+    new ApiResponce(
+      200, 
+      req?.user,
+      "current user fetched"
+    )
   )
 
 });
@@ -479,7 +483,10 @@ export const getUserChannelProfile = asyncHandler(async (req, res) => {
         coverImage: 1,
         subscribersCount: 1,
         channelsSubscribedToCount: 1,
-        isSubscribed: 1
+        isSubscribed: 1,
+
+        subscribers: 1,
+        subscribedTo: 1,
       }
     }
   ]);
@@ -488,10 +495,12 @@ export const getUserChannelProfile = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Channel not exists");
   };
 
+  console.log("Channel:", channel)
+
   return res
   .status(200)
   .json(
-    new ApiResponce(200, channel[0], "Channel found successfullu")
+    new ApiResponce(200, channel[0], "Channel found successfully")
   );
 
 });
@@ -540,6 +549,8 @@ export const getWatchHistory = asyncHandler(async (req, res) => {
       }
     }
   ]);
+
+  console.log("watch history user:", user)
 
   return res
   .status(200)
