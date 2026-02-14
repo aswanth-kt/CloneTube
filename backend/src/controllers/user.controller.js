@@ -2,9 +2,14 @@ import jwt from "jsonwebtoken";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
+import { Video } from "../models/video.model.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponce } from "../utils/ApiResponce.js";
-import { AVATAR_CLOUD_FOLDER_PATH, COVER_IMAGE_CLOUD_FOLDER_PATH } from "../constants.js";
+import { 
+  AVATAR_CLOUD_FOLDER_PATH, 
+  COVER_IMAGE_CLOUD_FOLDER_PATH, 
+  VIDEO_CLOUD_FOLDER_PATH 
+} from "../constants.js";
 import mongoose from "mongoose";
 
 
@@ -167,7 +172,7 @@ export const userLogout = asyncHandler(async (req, res) => {
 
   await User.findByIdAndUpdate(userId, 
     {
-      $set: { refreshToken: undefined }
+      $unset: { refreshToken: 1 }
     }, 
     { new: true }
   );
@@ -560,6 +565,49 @@ export const getWatchHistory = asyncHandler(async (req, res) => {
       user[0].watchHistory,
       "Watch history fetched successfully"
     )
+  );
+
+});
+
+
+export const uploadVideo = asyncHandler(async (req, res) => {
+
+  const { title, description } = req.body;
+
+  if (!title || !description) {
+   throw new ApiError(400, "All fields are required") 
+  }
+
+  const { videoLocalPath } = req.file?.path;
+
+  if (!videoLocalPath) {
+    throw new ApiError(400, "Video file is missing");
+  };
+
+  const cldVideo = await uploadOnCloudinary(videoLocalPath, VIDEO_CLOUD_FOLDER_PATH);
+
+  if (!cldVideo) {
+    throw new ApiError(400, "Video file is required");
+  };
+
+  const createdVideo = await Video.create({
+    videoFile: cldVideo.url,
+    title,
+    description,
+    duration: cldVideo.duration,
+    owner: req.user?._id
+  });
+
+  const video = await Video.findById(createdVideo._id);
+
+  if (!video) {
+    throw new ApiError(500, "Something went wromg while upload video");
+  };
+
+  return res
+  .status(201)
+  .json(
+    new ApiResponce(201, video, "Video uploaded")
   );
 
 });
