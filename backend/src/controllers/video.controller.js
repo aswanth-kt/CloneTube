@@ -29,26 +29,27 @@ export const uploadVideo = asyncHandler(async (req, res) => {
 
   const cldVideo = await uploadOnCloudinary(videoLocalPath, VIDEO_CLOUD_FOLDER_PATH);
 
-  const cldVideoThumpnail = await uploadOnCloudinary(thumpnailLocalPath, VIDEO_THUMPNAIL_CLOUD_FOLDER_PATH);
+  let cldVideoThumpnail = null;
+  if (thumpnailLocalPath) {
+    cldVideoThumpnail = await uploadOnCloudinary(thumpnailLocalPath, VIDEO_THUMPNAIL_CLOUD_FOLDER_PATH);
+  }
 
   if (!cldVideo) {
     throw new ApiError(400, "Video file is required");
   };
   console.log("cloud_video:", cldVideo);
 
-  if (!cldVideoThumpnail) {
-    throw new ApiError(400, "Video thumpnail file is required");
-  };
-
   const createdVideo = await Video.create({
     videoFile: {
       url: cldVideo.url,
       public_id: cldVideo.public_id
     },
-    thumpnail: {
+    thumpnail: cldVideoThumpnail
+    ? {
       url: cldVideoThumpnail.url,
       public_id: cldVideoThumpnail.public_id
-    },
+    }
+    : undefined,
     title,
     description,
     duration: cldVideo.duration,
