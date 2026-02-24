@@ -23,7 +23,10 @@ router.get("/get-videos", getAllVideos);
 
 router.get("/get-video/:videoId", getVideoById);
 
-router.post("/update-video/:videoId", upload.single("videoFile"), updateVideo);
+router.post("/update-video/:videoId", upload.fields([
+  { name: "videoFile", maxCount: 1 },
+  { name: "thumpnail", maxCount: 1 },
+]), updateVideo);
 
 
 export default router;

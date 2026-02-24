@@ -179,12 +179,25 @@ export const getVideoById = asyncHandler(async (req, res) => {
 
 export const updateVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  
+
   if (!videoId) {
     throw new ApiError(400, "Invalid video Id");
   };
 
-  const videoLocalPath = req.file?.path;
+  const { title, description } = req.body;
+
+  if (!(title && description)) {
+    throw new ApiError(400, "Title and description fielsds required");
+  };
+
+  // console.log("req.files: ", req?.files);
+
+  const videoLocalPath = req.files?.videoFile[0].path;
+
+  let thumpnailLocalPath = null;
+  if (req.files && Array.isArray(req.files.thumpnail) && req.files.thumpnail.length > 0) {
+    thumpnailLocalPath = req.files.thumpnail[0].path;
+  }
 
   if (!videoLocalPath) {
     throw new ApiError(400, "Video file missing");
@@ -192,8 +205,13 @@ export const updateVideo = asyncHandler(async (req, res) => {
 
   const cld_video = await uploadOnCloudinary(videoLocalPath, VIDEO_CLOUD_FOLDER_PATH);
 
-  if (!cld_video) {
-    throw new ApiError(500, "Failed update video on cloudinary");
+  let cld_thumpnail = null;
+  if (thumpnailLocalPath) {
+    cld_thumpnail = await uploadOnCloudinary(thumpnailLocalPath, VIDEO_THUMPNAIL_CLOUD_FOLDER_PATH);
+  }
+
+  if (!(cld_video || cld_thumpnail)) {
+    throw new ApiError(500, "Failed update on cloudinary");
   };
 
   const video = await Video.findById(videoId);
@@ -203,17 +221,35 @@ export const updateVideo = asyncHandler(async (req, res) => {
   };
 
   const old_cld_video_publicId = video?.videoFile?.public_id;
+  const old_cld_thumpnail_publicId = video?.thumpnail?.public_id;
 
   // Update video url in db
   video.videoFile.url = cld_video?.url;
   video.videoFile.public_id = cld_video?.public_id;
+  video.title = title;
+  video.description = description;
+  video.duration = cld_video.duration;
+  if (cld_thumpnail) {
+    video.thumpnail.url = cld_thumpnail.url;
+    video.thumpnail.public_id = cld_thumpnail.public_id;
+  }
   await video.save();
 
-  const cloudinaryDeleteRes = await deleteFromCloudinary(old_cld_video_publicId, "video");
+  // delete from cloudinary
+  const cloudinaryVideoDeleteRes = await deleteFromCloudinary(old_cld_video_publicId, "video");
 
-  if (cloudinaryDeleteRes.result !== "ok") {
-    console.warn("Cloudinary video file delete warning:", cloudinaryDeleteRes)
+  let cloudinaryThumpnailDeleteRes;
+  if (thumpnailLocalPath) {
+    cloudinaryThumpnailDeleteRes = await deleteFromCloudinary(old_cld_thumpnail_publicId);
+  }
+
+  if (cloudinaryVideoDeleteRes.result !== "ok") {
+    console.warn("Cloudinary video file delete warning:", cloudinaryVideoDeleteRes)
   };
+
+  if (!cloudinaryThumpnailDeleteRes || cloudinaryThumpnailDeleteRes.result !== "ok") {
+    console.warn("Cloudinary thumpnail file delete warning:", cloudinaryThumpnailDeleteRes)
+  }
 
   return res.status(200)
   .json(
