@@ -1,6 +1,11 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
-import { uploadVideo } from "../controllers/video.controller.js";
+import { 
+  getAllVideos, 
+  getVideoById, 
+  updateVideo, 
+  uploadVideo 
+} from "../controllers/video.controller.js";
 import { veryfyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
@@ -13,6 +18,12 @@ router.post("/publish-video",
   veryfyJWT,
   uploadVideo
 );
+
+router.get("/get-videos", getAllVideos);
+
+router.get("/get-video/:videoId", getVideoById);
+
+router.post("/update-video/:videoId", upload.single("videoFile"), updateVideo);
 
 
 export default router;
