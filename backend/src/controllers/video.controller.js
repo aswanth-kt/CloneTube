@@ -184,76 +184,88 @@ export const updateVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid video Id");
   };
 
-  const { title, description } = req.body;
-
-  if (!(title && description)) {
-    throw new ApiError(400, "Title and description fielsds required");
-  };
-
-  // console.log("req.files: ", req?.files);
-
-  const videoLocalPath = req.files?.videoFile[0].path;
-
-  let thumpnailLocalPath = null;
-  if (req.files && Array.isArray(req.files.thumpnail) && req.files.thumpnail.length > 0) {
-    thumpnailLocalPath = req.files.thumpnail[0].path;
-  }
-
-  if (!videoLocalPath) {
-    throw new ApiError(400, "Video file missing");
-  };
-
-  const cld_video = await uploadOnCloudinary(videoLocalPath, VIDEO_CLOUD_FOLDER_PATH);
-
-  let cld_thumpnail = null;
-  if (thumpnailLocalPath) {
-    cld_thumpnail = await uploadOnCloudinary(thumpnailLocalPath, VIDEO_THUMPNAIL_CLOUD_FOLDER_PATH);
-  }
-
-  if (!(cld_video || cld_thumpnail)) {
-    throw new ApiError(500, "Failed update on cloudinary");
-  };
-
   const video = await Video.findById(videoId);
 
   if (!video) {
     throw new ApiError(404, "Video not found");
   };
 
-  const old_cld_video_publicId = video?.videoFile?.public_id;
-  const old_cld_thumpnail_publicId = video?.thumpnail?.public_id;
+  const { title, description } = req.body;
 
-  // Update video url in db
-  video.videoFile.url = cld_video?.url;
-  video.videoFile.public_id = cld_video?.public_id;
-  video.title = title;
-  video.description = description;
-  video.duration = cld_video.duration;
-  if (cld_thumpnail) {
-    video.thumpnail.url = cld_thumpnail.url;
-    video.thumpnail.public_id = cld_thumpnail.public_id;
-  }
-  await video.save();
+  const videoLocalPath = req.files?.videoFile?.[0]?.path || null;
+  const thumpnailLocalPath = req.files?.thumpnail?.[0]?.path || null;
 
-  // delete from cloudinary
-  const cloudinaryVideoDeleteRes = await deleteFromCloudinary(old_cld_video_publicId, "video");
+  let cld_video = null;
+  let cld_thumpnail = null;
 
-  let cloudinaryThumpnailDeleteRes;
-  if (thumpnailLocalPath) {
-    cloudinaryThumpnailDeleteRes = await deleteFromCloudinary(old_cld_thumpnail_publicId);
-  }
+  try {
+    if (videoLocalPath) {
+      cld_video = await uploadOnCloudinary(videoLocalPath, VIDEO_CLOUD_FOLDER_PATH);
+      if (!cld_video) {
+        throw new ApiError(500, "Video upload failed");
+      };
+    }
+  
+    if (thumpnailLocalPath) {
+      cld_thumpnail = await uploadOnCloudinary(thumpnailLocalPath, VIDEO_THUMPNAIL_CLOUD_FOLDER_PATH);
+      if (!cld_thumpnail) {
+        throw new ApiError(500, "Thumpnail upload failed");
+      };
+    }
+  
+    const old_cld_video_publicId = video?.videoFile?.public_id;
+    const old_cld_thumpnail_publicId = video?.thumpnail?.public_id;
+  
+    // Update provided fields
+    if (title) video.title = title;
+    if (description) video.description = description;
+    if (cld_video) {
+      video.duration = cld_video.duration;
+      video.videoFile.url = cld_video?.url;
+      video.videoFile.public_id = cld_video?.public_id;
+    }
+    if (cld_thumpnail) {
+      video.thumpnail = {
+        url: cld_thumpnail.url,
+        public_id: cld_thumpnail.public_id
+      }
+    }
+    await video.save();
+  
+    // delete old files from cloudinary
+    if (cld_video && old_cld_video_publicId) {
+      const cloudinaryVideoDeleteRes = await deleteFromCloudinary(old_cld_video_publicId, "video");
+  
+      if (cloudinaryVideoDeleteRes.result !== "ok") {
+        console.warn("Cloudinary video file delete warning:", cloudinaryVideoDeleteRes)
+      };
+    };
+  
+    if (thumpnailLocalPath) {
+      const cloudinaryThumpnailDeleteRes = await deleteFromCloudinary(old_cld_thumpnail_publicId);
+  
+      if (cloudinaryThumpnailDeleteRes.result !== "ok") {
+        console.warn("Cloudinary thumpnail file delete warning:", cloudinaryThumpnailDeleteRes)
+      }
+    };
+  
+    return res.status(200)
+    .json(
+      new ApiResponce(200, video, "Video updated")
+    );
 
-  if (cloudinaryVideoDeleteRes.result !== "ok") {
-    console.warn("Cloudinary video file delete warning:", cloudinaryVideoDeleteRes)
+  } catch (error) {
+    
+    // rollback uploaded file if DB is failed
+    if (cld_video?.public_id) {
+      await deleteFromCloudinary(cld_video.public_id, "video")
+    }
+
+    if(cld_thumpnail?.public_id) {
+      await deleteFromCloudinary(cld_thumpnail.public_id);
+    };
+
+    throw new ApiError(500, error?.message);
   };
-
-  if (!cloudinaryThumpnailDeleteRes || cloudinaryThumpnailDeleteRes.result !== "ok") {
-    console.warn("Cloudinary thumpnail file delete warning:", cloudinaryThumpnailDeleteRes)
-  }
-
-  return res.status(200)
-  .json(
-    new ApiResponce(200, video, "Video updated")
-  );
 
 });
