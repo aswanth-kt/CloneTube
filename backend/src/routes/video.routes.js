@@ -4,6 +4,7 @@ import {
   deleteVideo,
   getAllVideos, 
   getVideoById, 
+  togglePublishStatus, 
   updateVideo, 
   uploadVideo 
 } from "../controllers/video.controller.js";
@@ -30,6 +31,8 @@ router.post("/update-video/:videoId", upload.fields([
 ]), updateVideo);
 
 router.delete("/delete-video/:videoId", veryfyJWT, deleteVideo);
+
+router.patch("/publish-status/:videoId", veryfyJWT, togglePublishStatus);
 
 
 export default router;

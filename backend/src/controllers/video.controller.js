@@ -316,3 +316,33 @@ export const deleteVideo = asyncHandler(async (req, res) => {
   );
 
 });
+
+
+export const togglePublishStatus = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  const { isPublished } = req.body;
+
+  if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+    throw new ApiError(400, "Invalid video Id");
+  };
+
+  if (typeof isPublished !== "boolean") {
+    throw new ApiError(400, "isPublished must be boolean");
+  };
+
+  const video = await Video.findById(videoId);
+
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  };
+
+  // update the value
+  video.isPublished = !video.isPublished;
+  await video.save();
+
+  return res.status(200)
+  .json(
+    new ApiResponce(200, {isPublished: video.isPublished}, "Updated the publish value")
+  );
+
+});
