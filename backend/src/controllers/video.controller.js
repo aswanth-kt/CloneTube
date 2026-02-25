@@ -16,7 +16,7 @@ export const uploadVideo = asyncHandler(async (req, res) => {
    throw new ApiError(400, "All fields are required") 
   };
 
-  console.log("file:", req.files)
+  // console.log("file:", req.files)
 
   const videoLocalPath = req.files?.videoFile[0]?.path;
   const thumpnailLocalPath = req.files?.thumpnail[0]?.path;
@@ -39,7 +39,7 @@ export const uploadVideo = asyncHandler(async (req, res) => {
   if (!cldVideo) {
     throw new ApiError(400, "Video file is required");
   };
-  console.log("cloud_video:", cldVideo);
+  // console.log("cloud_video:", cldVideo);
 
   const createdVideo = await Video.create({
     videoFile: {
@@ -267,5 +267,52 @@ export const updateVideo = asyncHandler(async (req, res) => {
 
     throw new ApiError(500, error?.message);
   };
+
+});
+
+
+export const deleteVideo = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+
+  if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+    throw new ApiError(400, "Invalid video Id");
+  };
+
+  const video = await Video.findById(videoId);
+
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  };
+
+  // check who delete the video
+  if (video.owner.toString() !== req?.user?._id.toString()) {
+    throw new ApiError(403, "Unauthorized");
+  };
+
+  // delete video from cloudinary
+  if (video?.videoFile?.public_id) {
+    const deleteRes = await deleteFromCloudinary(video.videoFile.public_id, "video");
+    
+    if (!deleteRes || deleteRes.result !== "ok") {
+      // console.warn("Cloudinary video file delete warning: ", deleteRes);
+      throw new ApiError(500, "Failed to delete video file");
+    };
+  };
+  
+  // delete thumpnail from cloudinary
+  if (video?.thumpnail?.public_id) {
+    const deleteRes = await deleteFromCloudinary(video.thumpnail.public_id);
+
+    if (!deleteRes || deleteRes.result !== "ok") {
+      throw new ApiError(500, "Failed to delete thumpnail")
+    }
+  }
+
+  await video.deleteOne();
+
+  return res.status(200)
+  .json(
+    new ApiResponce(200, {}, "Video delete successfully")
+  );
 
 });

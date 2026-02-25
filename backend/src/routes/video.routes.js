@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
 import { 
+  deleteVideo,
   getAllVideos, 
   getVideoById, 
   updateVideo, 
@@ -27,6 +28,8 @@ router.post("/update-video/:videoId", upload.fields([
   { name: "videoFile", maxCount: 1 },
   { name: "thumpnail", maxCount: 1 },
 ]), updateVideo);
+
+router.delete("/delete-video/:videoId", veryfyJWT, deleteVideo);
 
 
 export default router;

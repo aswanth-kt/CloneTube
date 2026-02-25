@@ -49,11 +49,19 @@ export const deleteFromCloudinary = async (public_id, type = "image") => {
 
   try {
 
+    cloudinary.config({ 
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+      api_key: process.env.CLOUDINARY_API_KEY, 
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
     const response = await cloudinary.uploader.destroy(
       public_id,
       { resource_type: type }
     );
 
+    console.log(`cloudinary ${ type } delete responce: ${ response.result }`);
+    
     return response;
     
   } catch (error) {
